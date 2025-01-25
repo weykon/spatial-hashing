@@ -6,7 +6,8 @@ edition = "2021"
 [dependencies]
 noise = "0.9.0"
 rand = "0.8.5"
-ready-paint = "0.1.2"
+# ready-paint = "0.2.0"
+ready-paint = { path = "../ready-paint" }
 wgpu = "23.0.1"
 
 [dependencies.bytemuck]

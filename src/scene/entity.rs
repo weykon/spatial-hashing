@@ -9,12 +9,12 @@ use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 #[derive(Default)]
 pub struct Entity<'a> {
-    entity_poses: Option<Vec<Vec2>>,
-    single_buffer: Option<wgpu::Buffer>,
-    instance_buffer: Option<wgpu::Buffer>,
+    pub entity_poses: Option<Vec<Vec2>>,
+    pub single_buffer: Option<wgpu::Buffer>,
+    pub instance_buffer: Option<wgpu::Buffer>,
     vertex_layout: Option<wgpu::VertexBufferLayout<'a>>,
     instance_layout: Option<wgpu::VertexBufferLayout<'a>>,
-    instance_collect: Option<Vec<_CircleInstance>>,
+    pub instance_collect: Option<Vec<_CircleInstance>>,
 }
 
 impl<'a> Ready for Entity<'a> {
@@ -29,15 +29,21 @@ impl<'a> Ready for Entity<'a> {
         let mut entity_poses: Vec<Vec2> = Vec::new();
         let noise_xy = noise::Perlin::new(1);
         let mut rand = rand::thread_rng();
+        // 添加缩放因子来调整噪声的"密度"
+        let scale = 0.01; // 较小的值会产生更平滑的变化
+                          // 调整阈值来控制生成概率（当前0.5是中位数）
+        let threshold = 0.0; // 降低阈值会产生更多实体
 
         for i in 0..config.max_entities as i32 {
             let x = rand.gen_range(0.0..window_size[0] as f32);
             let y = rand.gen_range(0.0..window_size[1] as f32);
-            // let noise = noise_xy.get([x as f64, y as f64]);
-            // if noise > 0.5 {
-            entity_poses.push(Vec2::new(x, y));
-            // }
+            // 使用缩放因子
+            let noise = noise_xy.get([x as f64 * scale, y as f64 * scale]);
+            if noise > threshold {
+                entity_poses.push(Vec2::new(x, y));
+            }
         }
+
         let single_buffer = gfx.device.create_buffer_init(&BufferInitDescriptor {
             label: Some("single_buffer"),
             contents: bytemuck::bytes_of(&[
@@ -56,7 +62,7 @@ impl<'a> Ready for Entity<'a> {
             .iter()
             .map(|e| _CircleInstance {
                 position: e.to_array(),
-                radius: 10.,
+                radius: 5.,
                 velocity: [rng.gen_range(-max..max), rng.gen_range(-max..max)],
             })
             .collect::<Vec<_CircleInstance>>();

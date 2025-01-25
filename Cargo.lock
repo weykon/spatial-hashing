@@ -1241,9 +1241,7 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "ready-paint"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d7aa8a777ed648278c7378871f28d2419bff494ca48ccd5aafa12b9dab94448"
+version = "0.2.1"
 dependencies = [
  "wgpu",
 ]

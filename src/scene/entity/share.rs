@@ -5,7 +5,7 @@ use crate::scene::uniforms::Uniforms;
 use super::Entity;
 #[derive(Default)]
 pub struct Share {
-    pipeline_layout: Option<wgpu::PipelineLayout>,
+    pub pipeline_layout: Option<wgpu::PipelineLayout>,
     pipeline: Option<wgpu::RenderPipeline>,
 }
 

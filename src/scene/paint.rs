@@ -1,6 +1,11 @@
 use ready_paint::scene::{get_res, Paint as PaintTrait, Pass, Update};
 
-use super::{entity::{instance::_CircleInstance, share::Share, Entity}, uniforms::Uniforms};
+use super::{
+    boid::Boid,
+    entity::{instance::_CircleInstance, share::Share, Entity},
+    space::draw::SpaceDraw,
+    uniforms::Uniforms,
+};
 
 pub struct Paint;
 impl PaintTrait for Paint {
@@ -15,7 +20,8 @@ impl PaintTrait for Paint {
                 label: Some("Render Encoder"),
             });
         let _ = Uniforms::update(data, gfx);
-        let _ = _CircleInstance::update(data, gfx);
+        let _ = Boid::update(data, gfx);
+        // let _ = SpaceDraw::update(data, gfx);
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -39,6 +45,7 @@ impl PaintTrait for Paint {
             let mut render_pass = Uniforms::pass(data, &mut render_pass);
             let mut render_pass = Share::pass(data, &mut render_pass);
             let mut render_pass = Entity::pass(data, &mut render_pass);
+            let mut render_pass = SpaceDraw::pass(data, &mut render_pass);
         }
         gfx.queue.submit(std::iter::once(encoder.finish()));
         frame.present();
