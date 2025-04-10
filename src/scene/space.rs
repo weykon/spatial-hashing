@@ -2,7 +2,11 @@ pub mod draw;
 mod unit;
 use glam::{IVec2, Vec2};
 use ready_paint::scene::{return_res, Ready};
-use std::{collections::HashMap, marker::PhantomData};
+use std::{
+    collections::HashMap,
+    fmt::{write, Display},
+    marker::PhantomData,
+};
 use unit::{IndexGrid, PosString};
 
 #[derive(Default)]
@@ -23,6 +27,34 @@ pub struct SpaceMap<T> {
     cell_size: Vec2,
     map: HashMap<String, IndexGrid>,
     _marker: PhantomData<T>,
+    border_layer_map: Option<HashMap<String, IndexGrid>>,
+    border_line_width: f32,
+    x_entry: f32,
+    y_entry: f32,
+}
+
+#[derive(Debug)]
+pub enum BorderDir {
+    LT,
+    RT,
+    LB,
+    RB,
+}
+impl std::fmt::Display for BorderDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let text = match self {
+            BorderDir::LT => "LT".to_owned(),
+            BorderDir::RT => "RT".to_owned(),
+            BorderDir::LB => "LB".to_owned(),
+            BorderDir::RB => "RB".to_owned(),
+        };
+        write!(f, "{}", text)
+    }
+}
+
+#[test]
+fn display_right() {
+    assert_eq!(BorderDir::LB.to_string(), "LB");
 }
 
 impl<T> SpaceMap<T> {
@@ -31,14 +63,47 @@ impl<T> SpaceMap<T> {
             cell_size,
             map: HashMap::new(),
             _marker: std::marker::PhantomData,
+            border_layer_map: None,
+            border_line_width: 0.,
+            x_entry: 0.,
+            y_entry: 0.,
         }
     }
     pub fn clear(&mut self) {
         self.map.clear();
     }
+    // fn check_close_border(
+    //     &self,
+    //     entity_pos: Vec2,
+    //     border_map: &mut HashMap<String, IndexGrid>,
+    //     cell_center: Vec2,
+    // ) -> Option<IndexGrid> {
+    //     border_map.entry(key)
+    // }
     pub fn insert(&mut self, entity_id: u32, position: Vec2) {
         let cell_pos = self.get_cell_index(position);
         let key = PosString::from(cell_pos).value;
+        let cell_center = &self.get_cell_center(&cell_pos);
+        if let Some(border_map) = self.border_layer_map.as_mut() {
+            // if let Some(border_grid) = self.check_close_border(position, border_map, cell_center) {}
+            let dis = position - cell_center;
+            if dis.x.abs() > self.x_entry && dis.y.abs() > self.y_entry {
+                let border_dir = if dis.x > 0. && dis.y > 0. {
+                    BorderDir::RT
+                } else if dis.x < 0. && dis.y < 0. {
+                    BorderDir::LB
+                } else if dis.x < 0. && dis.y > 0. {
+                    BorderDir::LT
+                } else {
+                    BorderDir::RB
+                };
+                let pos_string = PosString::from((cell_pos, border_dir));
+                border_map
+                    .entry(pos_string.value)
+                    .or_insert(IndexGrid::new())
+                    .insert(entity_id);
+            }
+        }
         self.map
             .entry(key)
             .or_insert(IndexGrid::new())
@@ -69,36 +134,21 @@ impl<T> SpaceMap<T> {
             cell_pos.y as f32 * self.cell_size.y + self.cell_size.y / 2.,
         )
     }
-    // 根据目标位置和目标检测的半径，返回一个合适的cell_size，和目标位置正处于cell的中心点的划分空间
-    pub fn adapte_target(&mut self, target: Vec2, radius: f32) {
-        let rect = Vec2::new(radius * 2., radius * 2.);
-        let first_cell_pos = self.get_cell_index(target);
-        let cell_center = self.get_cell_center(&first_cell_pos);
-        let diff = target - cell_center;
-        let x_dir = if diff.x > 0. { -1 } else { 1 };
-        let y_dir = if diff.y > 0. { -1 } else { 1 };
-        let y_beside_cell = first_cell_pos + IVec2::new(0, y_dir);
-        let x_beside_cell = first_cell_pos + IVec2::new(x_dir, 0);
-        let xy_across_cell = first_cell_pos + IVec2::new(x_dir, y_dir);
-        let total = [first_cell_pos, y_beside_cell, x_beside_cell, xy_across_cell]
-            .iter()
-            .fold(Vec::new(), |mut acc: Vec<u32>, grid_pos| {
-                if let Some(grid) = self.get_index_grid_by_pos(grid_pos) {
-                    acc.extend(grid.entity_ids.iter());
-                }
-                return acc;
-            });
-
-        [first_cell_pos, y_beside_cell, x_beside_cell, xy_across_cell]
-            .iter()
-            .for_each(|grid| {
-                self.set_index_grid_entities(grid, total.clone());
-            });
-    }
 
     fn set_index_grid_entities(&mut self, grid_pos: &IVec2, entity_ids: Vec<u32>) {
         let key = PosString::from(grid_pos.clone()).value;
         self.map.insert(key, IndexGrid { entity_ids });
+    }
+
+    // add border layer
+    // the obj radius and distance for calculating to 2 * r + dis,
+    // keep a full enough distance to
+    fn with_border_layer(&mut self, object_radius: f32, object_center_separate_dis: f32) {
+        let border_line_width = object_center_separate_dis + 2. * object_radius;
+        self.border_layer_map = Some(HashMap::new());
+        self.border_line_width = border_line_width;
+        self.x_entry = self.cell_size.x - border_line_width;
+        self.y_entry = self.cell_size.y - border_line_width;
     }
 }
 

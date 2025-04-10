@@ -68,28 +68,15 @@ impl Update for Boid {
             collision_space.insert(i as u32, *pos);
             clustering_space.insert(i as u32, *pos);
         }
-        collision_space.adapte_target(boid.target, 100.);
-        let arrived_count = entity_poses
-            .iter()
-            .filter(|&pos| (boid.target - *pos).length() < boid_config.target_arrival_threshold)
-            .count();
-        if arrived_count > entity_poses.len() * 3 / 10 {
-            let mut rng = rand::thread_rng();
-            let new_target = Vec2::new(
-                rng.gen_range(0.0..config.width as f32),
-                rng.gen_range(0.0..config.height as f32),
-            );
-            boid.set_target(new_target);
-        }
+
+
+        // 目标位置的更新逻辑
+
+        // 实体insert到哈希空间
 
         let velocities = boid.velocities.deref_mut();
         let accs = boid.accs.deref_mut();
         let masses = boid.masses.deref_mut();
-
-        entity_poses.iter().enumerate().for_each(|(i, pos)| {
-            collision_space.insert(i as u32, *pos);
-            clustering_space.insert(i as u32, *pos);
-        });
 
         for (i, (pos, (acc, (mass, velocity)))) in entity_poses
             .iter()
@@ -104,17 +91,7 @@ impl Update for Boid {
 
             // 分离: 避免碰撞
             let index_grid = collision_space.query(*current_pos).unwrap();
-            for neighbor_id in index_grid.entity_ids.iter() {
-                if *neighbor_id as usize == i {
-                    continue;
-                }
-                let neighbor_pos = entity_poses[*neighbor_id as usize];
-                let diff = current_pos - neighbor_pos;
-                let dist = diff.length();
-                if dist < boid_config.separation_radius && dist > 0.0 {
-                    separation += diff.normalize() / dist;
-                }
-            }
+
 
             // 对齐和内聚: 使用更大的范围
             let index_grid = clustering_space.query(*current_pos).unwrap();
@@ -146,7 +123,7 @@ impl Update for Boid {
                 cohesion = cohesion / neighbors as f32 - current_pos;
             }
 
-            // 计算期望的速度方向
+            // 计算期望的速度方向， 三力合一，加一个目标力
             let desired_direction = {
                 let mut dir = Vec2::ZERO;
 
@@ -256,3 +233,4 @@ impl Boid {
         self.target = target;
     }
 }
+mod entry;
